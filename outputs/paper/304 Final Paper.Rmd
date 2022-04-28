@@ -96,11 +96,14 @@ nrow(train)
 ```
 
 ```{r overview_table, include = FALSE}
+# Create the new data set called data with na value omitted
 data = data %>% na.omit() %>% mutate(ENTRANCE_LOBBY = as.numeric(ENTRANCE_LOBBY), CONFIRMED_STOREYS = as.numeric(CONFIRMED_STOREYS), CONFIRMED_UNITS = as.numeric(CONFIRMED_UNITS), SCORE = as.numeric(SCORE), YEAR_BUILT = as.numeric(YEAR_BUILT), YEAR_EVALUATED = as.numeric(YEAR_EVALUATED), SECURITY = as.numeric(SECURITY))
 
+# clean their names
 data_clean = clean_names(data)
 rent_clean = clean_names(rent)
 
+# Create a table with mean value summarized
 table = data_clean %>% summarize(mean_year_build = mean(year_built), 
                          mean_year_evaluated = mean(year_evaluated), 
                          mean_confirmed_units = mean(confirmed_units), 
@@ -111,6 +114,7 @@ table = data_clean %>% summarize(mean_year_build = mean(year_built),
 ```
 
 ```{r table_cont, include = FALSE}
+# create a table2 with median of key variables summarized
 #table2 = data_clean %>% summarize(year_build = median(year_built), 
  #                        year_evaluated = median(year_evaluated), 
   #                       confirmed_units = median(confirmed_units), 
@@ -119,6 +123,7 @@ table = data_clean %>% summarize(mean_year_build = mean(year_built),
 ```
 
 ```{r table_cont_count, include = FALSE}
+# create a table3 with standard deviation of key variables summarized
 table3 = data_clean %>% summarize(year_build = sd(year_built), 
                          year_evaluated = sd(year_evaluated), 
                          confirmed_units = sd(confirmed_units), 
@@ -141,16 +146,19 @@ Other than the numeric view of these variables, we think some other variables, l
 
 ```{r histogram_rent_clean, echo=FALSE, message = FALSE, warnings = FALSE}
 
-
+# make a histogram shows the distribution of confirmed storeys
 g1 <- ggplot(data = data_clean, aes(x = confirmed_storeys)) + geom_histogram(color = "blue", fill = "azure2") + labs(x = "Number of Confirmed Storeys", y = "")
 
+# make a histogram shows the distribution of security
 g2 <- ggplot(data = data_clean, aes(x = security)) + geom_histogram(color = "blue", fill = "azure2") + labs(x = "Security", y = "")
 
+# make a histogram shows the distribution of entrance lobby
 g3 <- ggplot(data = data_clean, aes(x = entrance_lobby)) + geom_histogram(color = "blue", fill = "azure2") + labs(x = "Number of Entrance Lobby", y = "") 
 
-
+# make a histogram shows the distribution of confirmed units
 g4 <- ggplot(data = data_clean, aes(x = confirmed_units)) + geom_histogram(color = "blue", fill = "azure2") + labs(x = "Number of Confirmed Units", y = "")
 
+# make them into one graph
 grid.arrange(g1,g2,g3,g4,nrow=2,top=textGrob("Graph 1: The distribution of some key variables"))
 ```
 
@@ -159,16 +167,20 @@ The graph contain 4 histogram that shows the distribution of some key variables.
 Since score is the variable we care the most, we also plotted a histogram for score, which is also helpful for next stage, the multiple linear regression. 
 
 ```{r, echo=FALSE, message=FALSE}
+# make a ggplot that shows the distribution of score
 ggplot(data = data_clean, aes(x = score)) + geom_histogram(color = "blue", fill = "azure2") + labs(title = "Graph 2: Distribution of score of Toronto's apartments", x = "SCORE", y = "")
 ```
 The distribution shows that score is generally normally distributed between 50 and 100, and is centred around 75. This means that we should expect a random apartment in Toronto to be around 75, and should be between 50 and 100.
 
 ```{r scartterplot, echo=FALSE, message=FALSE}
+# Making a scatterplot
 rent_clean %>% 
+# with them grouped by property type
   group_by(confirmed_units, property_type) %>% 
   ggplot(aes(confirmed_units, score, color = property_type)) +
   geom_point() +
   geom_smooth() +
+  # facet-wrap by property type
   facet_wrap(vars(property_type),
               scales = "free_y"
              )+ labs(title = "Graph 3: The relationship between score and confirmed units grouped by propety type", 
@@ -194,13 +206,16 @@ There are 3 different property types: private, social housing and Toronto commun
 The first method of calculating confidence interval is via critical values (not via bootstrapping) and is for a mean. Since we do not know the population variance $\sigma^2$ but we know the sample variance $s^2$, so we should use the t distribution $\bar{X}-t_{\alpha/2,n-1}*s/\sqrt{n}$ and $\bar{X}+t_{\alpha/2,n-1}*s/\sqrt{n}$to get the confidence interval.
 
 ```{r, include= FALSE}
+# set seed
 set.seed(187)
+# calculated mean and standard deviation of data
 summary_table = rent_clean %>% 
   summarise(mean = mean(score), sd = sd(score))
 summary_table
 ```
 
 ```{r, include= FALSE}
+# get the quantile
 qt(0.975, nrow(rent_clean)-1)
 # 95% quantile2
 
@@ -229,10 +244,14 @@ rent_clean %>% summarise(sd = sd(score)) %>% as.numeric()
 This is the sample standard deviation that we get from our data, which is 10.28. 
 
 ```{r, echo= FALSE}
+# seet seed
 set.seed(187)
+# seet replications
 repetitions <- 1000
+# stored the replications 
 boot_sd <- rep(NA, repetitions)
 for (i in 1:repetitions) {
+# Make a histogram
 sim_sd <- rent_clean %>% sample_n(nrow(rent_clean), replace = TRUE) %>% 
   summarise(sd = sd(confirmed_units)) %>% 
   as.numeric()
@@ -297,11 +316,13 @@ Each time we alter the model, we must test the assumptions made throughout the v
 We can find that the train and test dataset have the similar distribution so that we can validate our final model by the test dataset. The pairwise scatter plots are shown in Figure 1, and no apparent nonlinear trend between score and other predictors appears in the figures. There is no very high correlation between covariates for these predictors, so there is no obvious multicollinearity problem. 
 
 ```{r train_setup, include = FALSE}
+# table
 rent = train
 summary(rent)
 table(rent$PROPERTY_TYPE)
 table(rent$PROPERTY_TYPE)/length(rent$PROPERTY_TYPE)
 
+# get each standard deviation
 sd(rent$YEAR_BUILT)
 sd(rent$YEAR_EVALUATED)
 sd(rent$CONFIRMED_STOREYS)
@@ -316,6 +337,7 @@ sd(rent$LONGITUDE)
 
 
 ```{r train_num,  fig.width=8, fig.height=8,fig.cap="Scatter plot for the train dataset",echo = FALSE}
+# select and make train_num
 train_num = train%>%dplyr::select(SCORE,CONFIRMED_STOREYS,CONFIRMED_UNITS,NO_OF_AREAS_EVALUATED, LATITUDE,LONGITUDE,Age_Evaluated)
 plot(train_num)
 ```
@@ -326,24 +348,30 @@ Firstly, I run the full regrssion model and the results are shown in the first c
 
 
 ```{r full_model, include=FALSE}
+# Make full model
 full_model = lm(SCORE~Age_Evaluated+CONFIRMED_STOREYS+CONFIRMED_UNITS+NO_OF_AREAS_EVALUATED+as.factor(PROPERTY_TYPE)+ LATITUDE+LONGITUDE,data = train )
+#make AIC
 AIC_model = step(full_model)
 n = nrow(train)
+# make BIC
 BIC_model = step(full_model,k = log(n))
 ```
 
 
 ```{r test_BIC, include=FALSE}
+# Test BIC
 Test_BIC_model = lm(SCORE ~ Age_Evaluated + NO_OF_AREAS_EVALUATED + as.factor(PROPERTY_TYPE) + LONGITUDE, data = test)
 ```
 
 
 ```{r huxtable, include=FALSE}
+# Table
 huxtable::huxreg(full_model,AIC_model,BIC_model,Test_BIC_model)
 ```
 
 ```{r vic_full_model, include=FALSE}
 library(regclass)
+# VIF
 VIF(full_model)
 ```
 
