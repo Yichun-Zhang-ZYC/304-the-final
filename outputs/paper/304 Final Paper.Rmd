@@ -1,0 +1,439 @@
+---
+title: "A Study of Toronto's Apartment Ratings, 2021"
+author:
+- Yichun Zhang
+date: "10/04/2022"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 2
+  html_document:
+    toc: yes
+    toc_depth: '2'
+    df_print: paged
+subtitle: "The estimate and potential influential factors of the score of Toronto's apartments"
+abstract: "Canada, especially Toronto, has built many apartment houses and they are popular to serve as single-family, owner-occupied dwellings. In 2017, a bylaw enforcement program launched to ensure the apartment owners and operators adhere to building upkeep regulations. We estimated the average and standard deviation of rated scores of the apartments by confidence interval and studied the potential variables that affects the variations of the score. As a result, we found that we are 95% confident that the true mean and standard deviation of score is from 71.95 to 72.37 and from 10.06058 to 10.51280 respectively, and the age of evaluation, number of confirmed storeys, area evaluated and confirmed units, as well as the latitude and longitude of the apartments are influential factors to the variation of score"
+bibliography: references.bib
+---
+
+
+Code and data are available at ^[https://github.com/Yichun-Zhang-ZYC/304---Final-Paper]
+
+```{r setup_lib, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+#install.packages("devtools")
+#devtools::install_github("warint/statcanR")
+#install.packages("gridExtra")
+library(tidyverse)
+library(dplyr)
+library(openintro)
+library(janitor)
+library(lubridate)
+library(gridExtra)
+library(grid)
+
+```
+
+# Introduction 
+
+Apartment houses are deviations from the North American ideal of single-family, owner-occupied dwellings. Understandably, they drew a lot of flak once they were initially built in Canadian cities, particularly in Toronto, where anti-apartment laws were passed in 1912. They were decried as unsanitary, anti-family, and a danger to established property values, damaging both morally and economically "cities of houses." They were, nevertheless, indications of modernism and international elegance, commended for their efficiency and suitability for new sorts of homes living new lives. As a result, they appeared in new communities in the Canadian West, particularly in the 1910s, and grew in popularity during the 1920s. The Toronto launched the enforcement program in 2017 to ensure that apartments adhere building upkeep regulations. Every year, the City compiles a list of all buildings that require an evaluation that year. A Bylaw Enforcement Officer is assigned for each building evaluation and building owner/operators are notified when their building requires an evaluation. The evaluation is scheduled so that the property owner, or a designate can be present to provide the bylaw enforcement officer access to locked common areas and/or facility amenities.
+
+The apartment safety score is one of the most critical indicators to help us choose an apartment. On the other hand, the value of real estate is enormous, and apartment security is directly reflected in the value of the apartment. At the same time, Toronto's apartments are mainly concentrated in densely populated areas like the city center. Since the apartment has a long service life as a residence, the safety of the apartment is likely to be affected by various factors within the service life. Due to the scattered households and asymmetry of information, ensuring the safety of apartments requires reasonable supervision by the government. The government needs to understand the specific influencing factors of apartment safety to regulate the property better, set standards, and timely supervise and punish them. Therefore, an in-depth understanding of the factors that influence apartment security in Toronto can help the government determine the importance of different factors, thereby achieving differentiated management. The government can revise the detailed rules of apartment building evaluation standards in the future based on the size of the impact on apartment safety to more efficiently protect the safety of residents.
+
+Some key variables of this paper are: score, confirmed units, confirmed storeys, entrance lobby and etc. Score is a number between 0 to 100 that shows how well the apartment is maintained. In this paper, we first take a glance of what this data is like by drawing some graphs and create some tables.We also built a shiny application that shows the distribution of scores. With the basic idea of this data is like in mind, we implemented confidence interval analysis that studies the mean and standard deviation of scores.The result shows that we are 95% confident that the true mean is between 71.95 and 72.37 and we are 95% confident that the true sample standard deviation is between 10.06058 and 10.51280. The "95%" in the confidence interval above indicates the degree of conviction we have about our estimate. If we repeated the method (drawing a new sample, conducting new interviews, computing fresh estimates and confidence intervals), the confidence intervals would almost always include the average of all the estimates. As a consequence, we have generated a single estimate in such a manner that, if repeated endlessly, 90% of the confidence intervals obtained include the correct value. Confidence intervals are one approach to quantify the "quality" of an estimate; the bigger the 95% confidence interval for a given estimate, the more care is necessary when utilising the estimate. Confidence intervals serve as a crucial reminder of the estimates' limitations [@citebasic].
+
+Afterward, we are interested in studying the safety of these apartments. We used the automated methods to choose the best model and we use the partial F test to get rid of some variables. AIC, BIC, and AIC corrected are the four criterias that we used for choosing our models. The ideal model should have high adjusted $R^2$ and a small AIC, BIC and AICc. We discovered that the safety score is linked to age, area examined, and location. Adding one year to the apartment's age reduces the score by 0.03. The Toronto Community Housing (TCHC) building has a worse safety rating than both social and private housing. But with an R-square of 8%, this model can only explain 8% of the variance in the safety score.
+
+The analysis will be conducted in R [@citeR], and the package we will use is tidyverse [@citetidyverse]. All graphs will be created using function ggplot2 [@citeggplot2]. The packages knitr [@citeknitr] are also used to generate the R markdown report.
+
+
+# Data 
+
+## Data Source
+The data is from Toronto's open data [@citeopendatatoronto]. A bylaw enforcement program launched in 2017 to ensure that apartment building owners and operators with three or more levels of units or ten or more units adhere to building upkeep regulations [@citeopen]. This dataset comprises ratings for rental properties that have been registered with RentSafeTO. Buildings must be inspected at the very least once every three years, if not more often. Common spaces, mechanical and security systems, parking lots, and outdoor grounds are all evaluated by Bylaw Enforcement Officers throughout the course of their duties. A score of one to five is assigned to each item, with one being the lowest and five representing the highest. At the time of assessment, if an item is not relevant to the building, its score will be recorded as a blank in the dataset. Specifically, the dataset contain more information about registered apartments' number of storeys and units, the year they are evaluated, number of areas they are evaluated, their latitutes and longtitudes and their score. The score is between 0 to 100 [@citeopen]. 
+
+Every year, the City compiles a list of all required building inspections. Owners and managers of buildings are notified when their buildings need to be inspected.The review is set up such that the property owner or someone else who has access to closed common areas and/or facility amenities may attend. A bylaw enforcement officer will now inspect the apartment building's facilities and elevators. After the inspection, the bylaw enforcement officer will transmit the images to the City's mobile app. Then the building gets a score. On the Tenant Notification Board, the building owner or operator may post the score. If any health and safety violations are discovered, an Order to Comply or Notice of Violation will be issued. The building owner will get an inspection report and a score from 1 to 10. The most current building assessment must be posted on the Tenant Notification Board. They must be informed to all prospective residents. The total assessment score will guide the City's future steps. An examination and audit of all shared spaces is required if a building fails its rating by 50%. "Comprehensive inspection and audit" The building owner will be notified of the complete building audit date.
+
+## Data Cleaning
+The data is retrieved from "Open Data Toronto". Using the R package [@citeopendatatoronto], we accessed the package, got all the resources and read the data. To be reviewed easier, I mutated a variable "id" that consecutively gives number to variables so that each entries has a unique id associated with it. After obtaining the data, I cleaned the data. In this study, we are mainly interested in the indicator "score" and possible influential indicators to "score". From the 40 variables, we selected score, confirmed units, confirmed stroeys, latitude, longitude, year evaluated, year built, number of area evaluated, property type and etc. To make future coding easier, we also omitted the missing values. Also, all variables of the dataset are characters, so I also made numbers to be numeric so that we can use them as numbers when plotting and making models.  
+
+\newpage
+
+
+## Data Overview and Visualization
+
+```{r data_rent, include = FALSE}
+library(opendatatoronto)
+library(dplyr)
+
+# get package
+package <- show_package("4ef82789-e038-44ef-a478-a8f3590c3eb1")
+package
+
+# get all resources for this package
+resources <- list_package_resources("4ef82789-e038-44ef-a478-a8f3590c3eb1")
+
+# identify datastore resources; by default, Toronto Open Data sets datastore resource format to CSV for non-geospatial and GeoJSON for geospatial resources
+datastore_resources <- filter(resources, tolower(format) %in% c('csv', 'geojson'))
+
+# load the first datastore resource as a sample
+data <- filter(datastore_resources, row_number()==1) %>% get_resource()
+data
+# Here you can load in and clean the data (you may need to do the cleaning in a separate R script). 
+
+# You may need additional chunks, in case you want to include some of the cleaning output.
+
+# Notice that the include=FALSE means that the code, and its resulting output, in this chunk will not appear in the pdf.
+rent = data%>%mutate(id = c(1:nrow(data)),YEAR_BUILT = as.numeric(YEAR_BUILT),YEAR_EVALUATED = as.numeric(YEAR_EVALUATED), CONFIRMED_STOREYS = as.numeric(CONFIRMED_STOREYS),CONFIRMED_UNITS = as.numeric(CONFIRMED_UNITS),SCORE = as.numeric(SCORE),NO_OF_AREAS_EVALUATED = as.numeric(NO_OF_AREAS_EVALUATED),LATITUDE = as.numeric(LATITUDE),LONGITUDE = as.numeric(LONGITUDE),)%>%dplyr::select(id,YEAR_BUILT,YEAR_EVALUATED,PROPERTY_TYPE,CONFIRMED_STOREYS,CONFIRMED_UNITS,SCORE,NO_OF_AREAS_EVALUATED, LATITUDE,LONGITUDE)%>% mutate(Age_Evaluated = YEAR_EVALUATED - YEAR_BUILT)%>% na.omit()
+
+## Create training and test set ##
+set.seed(1)
+n = nrow(rent)
+train <- rent[sample(seq_len(n), size = round(n/2)),]
+test <- rent[!rent$id %in% train$id,]
+nrow(test)
+nrow(train)
+```
+
+```{r overview_table, include = FALSE}
+data = data %>% na.omit() %>% mutate(ENTRANCE_LOBBY = as.numeric(ENTRANCE_LOBBY), CONFIRMED_STOREYS = as.numeric(CONFIRMED_STOREYS), CONFIRMED_UNITS = as.numeric(CONFIRMED_UNITS), SCORE = as.numeric(SCORE), YEAR_BUILT = as.numeric(YEAR_BUILT), YEAR_EVALUATED = as.numeric(YEAR_EVALUATED), SECURITY = as.numeric(SECURITY))
+
+data_clean = clean_names(data)
+rent_clean = clean_names(rent)
+
+table = data_clean %>% summarize(mean_year_build = mean(year_built), 
+                         mean_year_evaluated = mean(year_evaluated), 
+                         mean_confirmed_units = mean(confirmed_units), 
+                         mean_confirmed_storeys = mean(confirmed_storeys), 
+                         mean_score = mean(score))
+
+
+```
+
+```{r table_cont, include = FALSE}
+#table2 = data_clean %>% summarize(year_build = median(year_built), 
+ #                        year_evaluated = median(year_evaluated), 
+  #                       confirmed_units = median(confirmed_units), 
+  #                       confirmed_storeys = median(confirmed_storeys), 
+  #                       score = median(score))
+```
+
+```{r table_cont_count, include = FALSE}
+table3 = data_clean %>% summarize(year_build = sd(year_built), 
+                         year_evaluated = sd(year_evaluated), 
+                         confirmed_units = sd(confirmed_units), 
+                         confirmed_storeys = sd(confirmed_storeys), 
+                         score = sd(score))
+```
+
+
+
+| |Year Built|Year Evaluated|Confirmed Units|Confirmed Storeys|Score|
+|-------------|------------|----------------|------------------|---------------|---------|
+|Mean|1961.072|2018.562|88.61429|7.608147|73.36976|
+|Median | 1961 |2018|50|5|73|
+|Standard Deviation|18.34138|1.467761|94.60839|6.052611|9.916641|
+Table: Distribution Features of Some Key Variables
+
+The above table shows the mean, median and standard deviation of key variables, and also brings a general idea of their distributions. The average built year of evaluated apartments is around 1961, and the evaluating year of these buildings are centered around 2018. The average confirmed units of these apartments are 88, while the median confirmed units of these buildings are 50. On the other hand, the mean confirmed storeys is 7.6 and the median confirmed number of storeys is 5. The standard deviation is a measure of the amount of values' variance or dispersion. A low standard deviation implies that values are often near to the set's mean, while a high standard deviation shows that values are scattered throughout a broader range.The standard deviation of year built is about 18, and the standard deviation of year of evaluation of these apartments is about 1.47. This means the built year of these apartments are spreads broadly around 1961 while the evaluating year of the buildings are closely distributed around 2018.
+
+Other than the numeric view of these variables, we think some other variables, like entrance_lobby and number of securties may also be influential to the score of Toronto's apartment. Therefore, we visualized the distribution of confirmed storeys, confirmed units, entrance_lobby and security using histograms. 
+
+```{r histogram_rent_clean, echo=FALSE, message = FALSE, warnings = FALSE}
+
+
+g1 <- ggplot(data = data_clean, aes(x = confirmed_storeys)) + geom_histogram(color = "blue", fill = "azure2") + labs(x = "Number of Confirmed Storeys", y = "")
+
+g2 <- ggplot(data = data_clean, aes(x = security)) + geom_histogram(color = "blue", fill = "azure2") + labs(x = "Security", y = "")
+
+g3 <- ggplot(data = data_clean, aes(x = entrance_lobby)) + geom_histogram(color = "blue", fill = "azure2") + labs(x = "Number of Entrance Lobby", y = "") 
+
+
+g4 <- ggplot(data = data_clean, aes(x = confirmed_units)) + geom_histogram(color = "blue", fill = "azure2") + labs(x = "Number of Confirmed Units", y = "")
+
+grid.arrange(g1,g2,g3,g4,nrow=2,top=textGrob("Graph 1: The distribution of some key variables"))
+```
+
+The graph contain 4 histogram that shows the distribution of some key variables. First, the number of confirmed storeys is mostly between 0 and 10. Some of the apartments have more than 10 storeys but less than 20 storeys, and only few apartments have more than 20 storeys. The distribution of security is between 1 and 5, and the majority of apartments have 3-5 securities. As for number of lobby entrance, most apartments have 3 to 4 entrances, and some of them have 2 entrances or 5 entrances. The distribution fo number of confirmed units of these apartments are right-skewed. Most apartments have 0 to 200 confirmed units.
+
+Since score is the variable we care the most, we also plotted a histogram for score, which is also helpful for next stage, the multiple linear regression. 
+
+```{r, echo=FALSE, message=FALSE}
+ggplot(data = data_clean, aes(x = score)) + geom_histogram(color = "blue", fill = "azure2") + labs(title = "Graph 2: Distribution of score of Toronto's apartments", x = "SCORE", y = "")
+```
+The distribution shows that score is generally normally distributed between 50 and 100, and is centred around 75. This means that we should expect a random apartment in Toronto to be around 75, and should be between 50 and 100.
+
+```{r scartterplot, echo=FALSE, message=FALSE}
+rent_clean %>% 
+  group_by(confirmed_units, property_type) %>% 
+  ggplot(aes(confirmed_units, score, color = property_type)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(vars(property_type),
+              scales = "free_y"
+             )+ labs(title = "Graph 3: The relationship between score and confirmed units grouped by propety type", 
+               x = "Number of Confirmed Units", y = "Score")
+
+#> `summarise()` has grouped output by 'line'. You can override
+#> using the `.groups` argument.
+```
+
+There are 3 different property types: private, social housing and Toronto community housing (TCHC). After dividing them into property types, we want to see the relationship between confirmed units and their score. The scattorplots above have x-axis being number of confirmed units and the y-axis being their score, and they are grouped by property type. The graphs shows that there seems to have no relationship between apartments' confirmed units and their score. 
+
+
+
+# Confidence Interval 
+## Methods 
+
+  Confidence intervals are a range of probable true parameter values. To put it another way, it provides an estimate of a collection of numbers that is likely to contain an unknown true parameter. True parameters may include true means, real standard deviations, and true proportions, amongst other things. 
+  As previously stated, each confidence interval is connected with a percentage, referred to as a confidence level. This percentage indicates our confidence that the findings accurately reflect the underlying population parameter, based on the random sample. As I aim to account for 95% of probable outcomes, this indicates that 1-$\alpha$ equals 95%. Because the bootstrap sample distribution is normal, and a 95 percent signifies the centre 95 percent, we exclude the beginning 2.5 percent and the final 2.5 percent from our interval. The confidence level selected must be impregnable, consistent, and equitable. I chose a 95% confidence level in this research since the majority of planes are scheduled and follow a certain routine. Choosing a 95 percent seems reasonable since it covers the majority of scenarios while giving some room for deviation, considering the possibility of flight cancellations and delays. In this report, we'll take the variable "value" as a parameter and calculate the sample mean and standard deviation of its sample. By selecting using replacement, we get a random sample of the population. Bootstrap is a statistical technique that use random sampling with replacement to infer the sample distribution of a population. The term "resamples" refers to these repeated experiments. The empirical bootstrap is a sort of bootstrap that samples from the sampling distribution of an estimate without defining the data distribution. Therefore, if you know the family of distributions $F(\theta)$ (such as "Exponential," "Normal," or "Poisson") from which the data is collected but not the function's value, the parametric bootstrap is used to sample from the estimator's sampling distribution. Because we do not know the distribution of our initial data, we will employ empirical bootstrap in this investigation. Additionally, the z-distribution requires knowledge of the population standard deviation, while the t-distribution requires just the sample standard deviation. We will use the t distribution in our study since we do not know the real standard deviation. Additionally, since we do not know the real value of the parameter, we will use a sample estimator to estimate it. Nonetheless, each estimator is unique since each sample is unique (selected at random). In this scenario, the confidence interval may be used to calculate the frequency with which an interval contains the genuine population standard deviation.
+
+  To compute the margin of error for a confidence interval, we need a critical value (the number of standard errors we add and subtract to get the margin of error we want). When the sample size is large enough or we know what is the population standard deviation, we can apply the critical values on the Z-distribution. However, when the sample size is small or with the unknown population standard deviation, we should then use the t-distribution to find critical values. In mathematical definition, the CI for $\mu$ is ($\bar{X}-t_{\alpha/2,n-1}*s/\sqrt{n}$, $\bar{X}+t_{\alpha/2,n-1}*s/\sqrt{n}$).
+
+## Results 
+The first method of calculating confidence interval is via critical values (not via bootstrapping) and is for a mean. Since we do not know the population variance $\sigma^2$ but we know the sample variance $s^2$, so we should use the t distribution $\bar{X}-t_{\alpha/2,n-1}*s/\sqrt{n}$ and $\bar{X}+t_{\alpha/2,n-1}*s/\sqrt{n}$to get the confidence interval.
+
+```{r, include= FALSE}
+set.seed(187)
+summary_table = rent_clean %>% 
+  summarise(mean = mean(score), sd = sd(score))
+summary_table
+```
+
+```{r, include= FALSE}
+qt(0.975, nrow(rent_clean)-1)
+# 95% quantile2
+
+#summary_table$mean - qt(0.975, nrow(rent_clean)-1)*summary_table$sd/sqrt(nrow(rent_clean))
+
+#summary_table$mean + qt(0.975, nrow(rent_clean)-1)*summary_table$sd/sqrt(nrow(rent_clean))
+
+```
+
+
+|    |  Mean   |  SD  |  CI |
+|----------|---------|----------|---------|
+|     |  72.16 |   10.29   |  (71.95, 72.37) |
+Table: Summary of Mean and standard deviation and the confidence interval
+
+
+We first calculate the sample mean ($\bar{X}$) and sample standard deviation ($s$) from the variable "VALUE" of our dataset. From the table 2, we can see that $\bar{X}$ is 72.16 while $s$ is 10.29. When applying those values into the formula, we can get our confidence interval is (71.95, 72.37). It means we are 95% confident that true mean is between 71.95 and 72.37 (refer to the table). This means that we are confidence that 95% of all apartments in Toronto are scored between 71.95 and 72.37. 
+
+We also want to use the bootstrap method to study the confirmed units of Toronto's apartments, and it is for standard deviation. We will use bootstrap method to test our hypothesis, that is, the true standard deviation equals to the sample standard deviation. Specifically, our hypothesis is, in this case, is  $\hat{\sigma} - \bar{\sigma} = 0$.
+
+```{r,include=FALSE}
+# via bootstrapping method (Empirical Boostrap)
+rent_clean %>% summarise(sd = sd(score)) %>% as.numeric()
+```
+
+This is the sample standard deviation that we get from our data, which is 10.28. 
+
+```{r, echo= FALSE}
+set.seed(187)
+repetitions <- 1000
+boot_sd <- rep(NA, repetitions)
+for (i in 1:repetitions) {
+sim_sd <- rent_clean %>% sample_n(nrow(rent_clean), replace = TRUE) %>% 
+  summarise(sd = sd(confirmed_units)) %>% 
+  as.numeric()
+boot_sd[i] <- sim_sd
+}
+boot_sd <- tibble(sd = boot_sd)
+boot_sd %>% 
+  ggplot(aes(x = sd)) + geom_histogram(fill = "white", color = "black") +
+  geom_vline(xintercept = quantile(boot_sd$sd, c(0.025,0.975 )), color = "red")+
+  labs(title = "Graph 4: sampling distribution of standard deviation", 
+       x = "standard deviation", 
+       y = "")
+```
+
+```{r, echo= FALSE}
+#quantile(boot_sd$sd, c(0.025,0.975 ))
+```
+
+The process: 
+  First, we choose sample size: the original size of sample the all the values in our study. Afterward, we resampled with replacement for 1000 times, and sum up all the results. We get a distribution of the sampling result. The distribution is shown in a histogram. The distribution is often normal distribution, since we are just sampled randomly with replacement using our original data. Given that our prefered confidence level is 95%, we can find the confidence interval. Values between the 2 red lines are in the 95% interval. 1 minus first 2.5% and last 2.5% are the 95% range, so we use a quantile of 0.025 and 0.975 to see the value of bound. The result is : 
+  We are 95% confident that true standard deviation is between 10.06058 and 0.51280 (refer to the table). 
+
+By exploring our data, the sample mean of score is 72.16, and the sample standard deviation is 10.29. We hypothesize that the true standard deviation equals our sample standard deviation. Applying two methods (critical value  &bootstrap) to calculate the confidence interval, we have the following key results: 
+
+  1. We are 95% confident that the true mean is between 71.95 and 72.37. 
+  2. We are 95% confident that the true sample standard deviation is between 10.06058 and 10.51280.
+
+   Overall, this data is just one year of the world database. Studying this dataset can give us some sense of the big picture of all Canada flight, while we do also need to expand and elaborate on our study to obtain a more scientific result. The work we’ve done can be useful for future studies. For example, the bootstrap method we used this time can be when we need to estimate a parameter, while we do not have the whole population we need as a sample. Using bootstrap, though this cannot give a certain number, we can find a range of where the parameter can be at. 
+
+  
+  To sum up, we focus on using the critical value and bootstrap method to explore aspects of aircraft movement data. First, we generally introduce the data and the background. Also, we give definitions for terminologies. Next step, we introduce the data we use and why we choose to use the specific variable. A histogram and a table are made here to define more about the data. Then we use two different methods “critical value” and “bootstrap,” to find the true mean and true standard deviation and know that we are 95% confident that the true mean between 71.95 and 72.37. We are 95% confident that the true sample standard deviation is between 10.06058 and 10.51280.
+
+# Multiple Linear Regression 
+## Methods
+
+The multiple linear regression (MLR) are used to study the relations between many variables in th form: 
+
+$$y = \beta_0 + \beta_1x_1 + ...+ \beta_px_p+ \epsilon$$
+Where $\beta_i$ represents the coefficients need to estiamted, $x_i, i = 1...p$ is the predictor variables, y is the response variable, $\epsilon$ is the error term. 
+
+The assumptions on $\epsilon$ are : 
+1. $E(\epsilon) = 0$
+2. $V(\epsilon) = \sigma^2I$
+3. $\epsilon$ follow normal distribution. 
+
+Under these assumptions, we can get a best linear unbiased estimate (BLUE) by the ordinary least square method. 
+
+The dataset has 9688 observations and 40 variables, within which some variables record the score for each area. I want to estimate the overall rating of the apartments. Thus, I dropped these variables, and kept 9636 observations and eight variables. I split the dataset randomly by 50/50 to the train and test dataset. Their summaries are shown in Table X. The average built year is 1961, and the mean evaluated age is around 60 years. Due to the old age of these buildings, safety issue becomes more crucial. 
+
+If a dataset has p predictors, there would be $2^p$ subset of the predictors in the regression analysis. Thus, when dealing with the dataset will a number of variables, we need to resort to automated selection methods to get a preferred model. Before this procedure, we can use the partial F test to eliminate some variables if we think these variables are unrelated to the research question. There are four measures used as the criteria for selecting models, which are Adjusted $R^2$, Akaike's Information Criterion (AIC), corrected AIC and BIC. In general, we prefer to select a model with a high adjusted $R^2$ while having a small AIC, AICc and BIC. However, sometimes, different models will get by these measures. Thus, the guideline to help us select the model as the best one if it has an adjusted $R^2$ that is slightly smaller but has one of the smallest values of AIC, AICc or BIC and fewer predictors. 
+
+The most often used stepwise selection approach is forward/backward model selection. Forward model selection starts with no predictors and gradually adds them, while backward elimination begins with all predictors and gradually deletes them. The automated selection approach enables us to pick a model from a wide range of predictors in a systematic manner. However, owing to its one-direction action, we may not get the optimal model.
+
+To validate a model, we must choose an independent dataset from the same population as the train dataset and see if the model performs similarly on the new dataset. The supplied dataset may be divided into two parts: the train and test datasets. The amount by which the dataset is divided is arbitrary, however 50/50 is the most typical split.
+
+Occasionally, we are unable to verify our model. Several possible reasons for not validating the model include the following: 1) the test dataset is distinct from the training dataset; 2) the model has an excessive number of influential points. 3) a short test dataset; 4) a transformation relevant to correcting the model assumption. Thus, prior to the model validation phase, we must compare the distribution of variables in the test dataset.
+
+Each time we alter the model, we must test the assumptions made throughout the variable selection phase. However, it will take an inordinate amount of time. Rather than that, we may sometimes evaluate assumptions using EDA or Residual plots for the whole model and the end model. For instance, in EDA, the histogram of the response variable may be used to test the assumption of normality. The scatter plot may be used to determine the degree of nonlinearity between variables and the possibility of multicollinearity. Residual plots are the most often used method for assessing noncompliance. Any patterns in the residual plot may indicate that an assumption in this model has been violated. If the assumptions of non-constant variance, non-linearity, and non-normality are violated, we may apply the transformation technique to resolve these issues.
+
+## Result
+
+We can find that the train and test dataset have the similar distribution so that we can validate our final model by the test dataset. The pairwise scatter plots are shown in Figure 1, and no apparent nonlinear trend between score and other predictors appears in the figures. There is no very high correlation between covariates for these predictors, so there is no obvious multicollinearity problem. 
+
+```{r train_setup, include = FALSE}
+rent = train
+summary(rent)
+table(rent$PROPERTY_TYPE)
+table(rent$PROPERTY_TYPE)/length(rent$PROPERTY_TYPE)
+
+sd(rent$YEAR_BUILT)
+sd(rent$YEAR_EVALUATED)
+sd(rent$CONFIRMED_STOREYS)
+sd(rent$CONFIRMED_UNITS)
+sd(rent$SCORE)
+sd(rent$NO_OF_AREAS_EVALUATED)
+sd(rent$Age_Evaluated)
+sd(rent$LATITUDE)
+sd(rent$LONGITUDE)
+```
+
+
+
+```{r train_num,  fig.width=8, fig.height=8,fig.cap="Scatter plot for the train dataset",echo = FALSE}
+train_num = train%>%dplyr::select(SCORE,CONFIRMED_STOREYS,CONFIRMED_UNITS,NO_OF_AREAS_EVALUATED, LATITUDE,LONGITUDE,Age_Evaluated)
+plot(train_num)
+```
+
+
+
+Firstly, I run the full regrssion model and the results are shown in the first column of Table 2. The variance inflation factor (VIF) are all less than 5, so no multicolinearity occurs. The LATITUDE is not significant and there are 7 predictors in the model, so I choose automated selection method by AIC and BIC measures, and the results are shown in column 2 and 3. The AIC model is the same as the full model, while the BIC model drops confirmed storeys, confirmed units and Latitude. The $R^2$ of BIC model is 0.078, only 0.2% smaller than the full model, and it has the smallest BIC measure. So I select the BIC model as my final model in the end. 
+
+
+```{r full_model, include=FALSE}
+full_model = lm(SCORE~Age_Evaluated+CONFIRMED_STOREYS+CONFIRMED_UNITS+NO_OF_AREAS_EVALUATED+as.factor(PROPERTY_TYPE)+ LATITUDE+LONGITUDE,data = train )
+AIC_model = step(full_model)
+n = nrow(train)
+BIC_model = step(full_model,k = log(n))
+```
+
+
+```{r test_BIC, include=FALSE}
+Test_BIC_model = lm(SCORE ~ Age_Evaluated + NO_OF_AREAS_EVALUATED + as.factor(PROPERTY_TYPE) + LONGITUDE, data = test)
+```
+
+
+```{r huxtable, include=FALSE}
+huxtable::huxreg(full_model,AIC_model,BIC_model,Test_BIC_model)
+```
+
+```{r vic_full_model, include=FALSE}
+library(regclass)
+VIF(full_model)
+```
+
+|  Table     |  Variable    |  Full Model      | AIC_model     |  BIC_model    |  Test_BIC|
+|------------|--------------|-----------|---------|-----------|-----------|
+|            |  (Intercept) |    1526.48| 1497.83  |  1010.12  |  744.45 |
+|            |  Age evaluated |   -0.01 |          |           | -0.01 |
+|            |  Confirmed storeys | 0.02|  72.16  |   10.29   |
+|            |  Confirmed units | -0.01 |  -0.01  |   -0.01   |
+|            |  Number of areas evaluated |  2.28 |  2.32  |  2.27   |1.65 |
+|            |  Property type (Social housing) |  0.20     | 0.38    | 0.53   |1.73|
+|            |  Property type (TCHC) | -4.74   |  -4.67  |   -4.59  | -5.21|
+|            |  Latitude | -8.97   |  -8.64    |         |      |
+|            |  Longitude |  13.85 |  13.68  |   12.28   | 8.81 |
+
+Table: Parameter Estimates for Final Model
+
+The additional conditions have been satisfied. The residual plots for BIC model are shown in Figure2. The top-left figure shows that linearity and constant variance assumption are satisfied. The normal Q-Q plot shows the normality assumption is also hold. Then, the bottom two figures show that no obvious outliers and influential points, but there are several leverage points. In all, all the assumptions are good, so we don't need to do further transformation. 
+
+I validate the final model by the test dataset, and the results are shown in the last column. The estimated coefficients between test dataset and train dataset have the similar sign and significance. But, we still find some difference, for example, the R2 of final model in train dataset is 7.8%, while the one in test dataset is 10.4%. The p-value of the coefficeint of age is less than 0.001, while it is between 0.01 and 0.05 in the test dataset. 
+
+
+```{r bic_plot,  fig.width=6, fig.height=6,fig.cap="Residual plots",echo = FALSE}
+par(mfrow = c(2,2))
+plot(BIC_model)
+```
+
+From the previous analysis, we found that the safety score is related to the age, number of area evaluated, and their location. If one more age of the apartment, about 0.03 score decreases holding other variable constant. The (Toronto Community Hosing)TCHC building has the worst safety score than social housing and private housing, about 5 scores less than other types. However, the R-square is only 8%, this model can only explain 8% variation of the safety score. 
+
+
+# Discussion
+
+## Our findings and their impact
+
+Toronto's apartments serve as private dwelling, social housing and community housing. Some of these apartments can be traced back to around 1830 while many of them are brand new. The City of Toronto granted RentSafeTO to launch the evaluation program for the benefits of owners and tenants in Toronto's apartments are rated these apartments to scored them from 1 to 100 using different indicators. The majority of them scored between 50 and 100, which means most apartments does not require immediate actions and they are still good to live in. According to [@citeopen], If buildings score 65 per cent or less, then the next evaluation will take place within one year. If the score is between 66 – 85 per cent, the next evaluation will take place within two years and if buildings score 86 percent and above the next evaluation with be within three years. By doing confidence interval, we concluded tha we are 95% confident that the true average score is between 71.95 and 72.37 and we are 95% confident that the true sample standard deviation of score is between 10.06058 and 10.51280. This means that most apartments are rated between 66 and 85 and will be evaluated again in next 2 years. The score is a indicator for landlords and tenants and this information can be accessed from City of Toronto or be downloaded from Toronto Open Data. 
+
+We found that the score of Toronto's apartments are age they been evaluated, the confirmed storeys, the confirmed units, the number of areas they been evaluated, the property type, the latitude and longitude of the apartments will contribute to the overall score of the apartments. This brings us the key indicators of an apartment. In our shiny application, we can see the distribution of the score, which is generally normally distributed. 
+
+
+## Bias and Ethical Concerns
+
+The apartment ratings relate to the expectation, the price and the benefits of the building management group. Therefore, the management and the buildings might want to a good score. Driven by this need, they might want to fake some indicators, or purposely open some facilities that are normally not in use. For example, to get a good score in the amenity, they might open the gym for inspection while the gym is normally closed. This might rise bias in the censuses. Regarding ethical concerns, this data set is factual inspection results instead of people-related results, therefore, ethical concerns like sensitive data, personal information does not apply. However, the indicators and aspects of evaluation can be not enough all-around. Apartments are only evaluated in a quantitative perspective, but how people are experienced in the apartments are not evaluated. 
+
+
+
+# Weaknesses and Next Steps 
+
+During data cleaning, we removed all observations that had a missing value in the variables. This removed a lot of observations from the model. If these observations were not dropped randomly from the dataset, there is bias and we are not getting the true results. Also, the sample size may not be large and representative enough for finding a true parameter. Also, it repeated only 1000 times so that the R cloud is not overloaded, but we can have a higher accuracy if we simulate more than 10000 times. In a further study, we might increase the sample size to get a more accurate and representative true parameter. Also, have a larger simulation could also increase the accuracy. Additionally, we only selected part of all the variables to be our initial model, and some are dropped by us. This makes our model to be less inclusive and is just partial. 
+
+For further reports, we may want to randomly drop the missing values instead of just removing the NA values. We should also dig into the reasons they are missing and consider their impact on the model. Also, we may also want to repeat more times for simulation so that our study is more accurate. We may want to build a large initial model that include all the initial variables. 
+
+
+
+# Appedix
+
+
+## Table
+
+
+
+
+
+**Table X: Summary results of test and train dataset**
+
+|  | Train Dataset|Test Dataset|
+|--------------- |--------------- | --------------- | 
+|**Built Year** |
+|Mean/SD| 1961/18.46|1961/18.37|
+|**Evaluated Year** |
+|Mean/SD| 2018/1.47 | 2018/1.45|
+|**Evaluated Age** |
+|Mean/SD| 57.6/18.5 |57.9/18.4 |
+|**Storeys** |
+|Mean/SD| 7.6/6.1 |7.4/6.0|
+|**Units** |
+|Mean/SD| 88/94 |86/93 |
+|**No of Evaluated Areas** |
+|Mean/SD| 17.2/1.66 |17.1/1.67 |
+|**Evaluated Score** |
+|Mean/SD| 71.2/10 | 72.2/10 |
+|**LATITUDE** |
+|Mean/SD| 43.7/0.04 | 43.7/0.04 |
+|**LONGITUDE** |
+|Mean/SD| -79.4/0.09 |-79.4/0.09 |
+|**Property type** |
+|Private| 4014(84%) |4004(84%) |
+|Housing| 289(6%)| 293(6%)|
+|TCHC| 455(10%) |461(10%) |
+|**Sample size** |4758 |4758|
+
+## Shiny Application
+
+The shiny application is avaiable at: 

@@ -1,0 +1,63 @@
+
+```{r}
+# Load all packages that may need in this simulation
+library(knitr)
+library(janitor)
+library(lubridate)
+library(tidyverse)
+library(tidyr)
+
+# To simulate our data, we need to create a dataset with nine columns: 
+# ‘by residence’, ‘year’, 'no_education', 'primary_incomplete', and etc. 
+# that are listed below. In the case of 'by_residence', reasonable values could 
+# be 'Mainland', "total_urban' and six more.
+```
+
+```{r}
+set.seed(234)# We randomly set values for set seed
+
+simulated_rent_clean <- 
+  tibble(
+     
+      c(                 # Randomly choose one of eight options, we repeat the name of each residence 20 times with rep()
+        rep('PRIVATE', 20),
+        rep('SOCIAL HOUSING', 20),
+        rep('TCHC', 20)
+      ),
+    year =              # Randomly select years from 1990 to 2009 
+      rep(c(1990:2009), 3),
+    
+   year_built = 
+      runif(n = 60,    # we draw from the uniform distribution with runif() to simulate an estimated value with size 160
+            min = 1805, # set the minimum and maximum values, and 
+            max = 2021), # these values are from observing our raw data. The purpose is to let R generate similar values as raw dataset 
+    confirmed_storeys = 
+      runif(n = 60,    # repeat the similar process as above but this time generate another variable.
+            min = 3, 
+            max = 51),
+    
+    score = # repeat the same process
+      runif(n = 60,
+            min = 0, 
+            max = 100),
+    no_of_areas_evaluated = # repeat the same process
+      runif(n = 60,
+            min = 0, 
+            max = 20),
+    
+    latitude =           # repeat the same process
+      runif(n = 60,
+            min = 43.58828, 
+            max = 43.81394),
+    longitude =  # repeat the same process
+      runif(n = 60,
+            min = -79.61487, 
+            max = -79.14924),
+    age_evaluated =      # repeat the same process until all nine variables are generated. Then we can use this simulated data
+      runif(n = 60,
+            min = -2, 
+            max = 215)
+  )
+```
+
+
